@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Project 1</title>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+	<style>
+    	text { 
+			font-family: Arial; 
+			font-size: 15px;
+		}
+		.axis path, .axis line {
+			fill: none;
+			stroke: black;
+			shape-rendering: crispEdges;
+		}
+		.tick text {
+			fill: black;
+			font-size: 11px;
+		}
+
+		rect {
+			stroke: white;
+		}
+	</style>
+</head>
+<body>
+
+	<svg id="main" width="2000" height="2000">
+		<text id='label' x='20' y='20'>John Snow Visualizations of Cholera Casualities</text>
+		<text id='label' x='20' y='40'>Documentation Link: https://drive.google.com/file/d/1M2_Rwz1cvCYM4MdjdVqEqzsQe7MNriKE/view?usp=sharing</text>
+		<text id='label' x='20' y='60'>Video Link: https://iu.mediaspace.kaltura.com/media/1_nthl0by3</text>
+		<text id='label' x='135' y='720'>Legend:</text>
+		<text id='label' x='135' y='740', fill='#99d8c9'>Light Green: Ages 0-20</text>
+		<text id='label' x='135' y='760', fill='#41ae76'>Green: Ages 21-60</text>
+		<text id='label' x='135' y='780', fill='#00441b'>Dark Green: Ages 61+</text>
+		<text id='label' x='135' y='800', fill='#fd8d3c'>Orange: Pump Locations</text>
+		<g transform="translate(20,40)"></g>
+	</svg>
+
+	<script>
+		var dataset;
+		var streets = [];
+		var streetX = [];
+		var streetY = [];
+		var pumps = [];
+		var deaths = [];
+		var deathGraph = [];
+		var parser = d3.time.format("%d-%b").parse;
+		var svg = d3.select("body")
+			.append("svg");
+
+		d3.csv("pumps.csv", function(data) {
+			dataset = data;
+			CreatePumps(dataset);
+			DrawPumps(pumps);
+		});
+		
+		d3.csv("deaths_age_sex.csv", function(data) {
+			dataset = data;
+			CreateDeaths(dataset);
+			DrawDeaths(deaths);
+		});
+		d3.json("streets.json", function(d) {
+			dataset = d;			
+			arrays = [];
+
+			for (var i=0; i<d.length; i++) {
+				var value = dataset[i];
+				var lineStartx = value[0].x;
+				var lineStarty = value[0].y;
+				var lineEndx = value[1].x;
+				var lineEndy = value[1].y;
+				var object = {
+					x1: lineStartx,
+					y1: +lineStarty,
+					x2: +lineEndx,
+					y2: +lineEndy,
+				};
+				arrays.push(object);
+			}
+			createStreet(arrays);
+			//drawStreet();
+		});
+		
+		d3.csv("deathdays.csv", function(data) 
+		{
+			var records = data;
+			for(var i=0; i <=41; i++)
+			{
+				var date = records[i].date;
+				var deaths = records[i].deaths;
+				var formatDate = parser(date);
+				var object = {
+					date: formatDate,
+					deaths: deaths
+				}
+				deathGraph.push(object);
+			}
+			drawGraph(deathGraph);
+		});
+
+		function createStreet(dataset) {
+			var selection = d3.select('svg').select('g').selectAll('line').data(arrays);
+			var lines = selection.enter().append('line')
+			.style("stroke", "black")
+			.attr('x1', function(d, i) {
+				return arrays[i].x1 * 35
+			})
+			.attr('x2', function(d, i) {
+				return arrays[i].x2 * 35
+			})
+			.attr('y1', function(d, i) {
+				return arrays[i].y1 * 35
+			})
+			.attr('y2', function(d, i) {
+				return arrays[i].y2 * 35
+			})	
+		}
+
+		function CreatePumps(dataset) {
+			for (var i=0; i<13; i++) {
+				pumps.push(dataset[i]);	
+			}
+		}
+
+		function DrawPumps(pumps) {
+		var selection = d3.select('svg').select('g').selectAll('circle').data(pumps);
+		var circles = selection.enter().append('circle')
+		.attr('fill', '#fd8d3c')
+		.attr('cx', function(d, i) {
+			return pumps[i].x * 35
+		})
+		.attr('cy', function(d, i) {
+			return pumps[i].y * 35
+		})
+		.attr('r', 7);
+		}
+
+		function DrawDeaths(deaths) {
+		var selection = d3.select('svg').select('g').selectAll('circle').data(deaths);
+
+		var circles = selection.enter().append('circle')
+		.style("fill", function(d, i) {
+            	if (deaths[i].age == 0) {return "#99d8c9"}
+            	if (deaths[i].age == 1) { return "#99d8c9" }
+		if (deaths[i].age == 2) { return "#41ae76" }
+		if (deaths[i].age == 3) { return "#41ae76" }
+		if (deaths[i].age == 4) { return "#00441b" }
+		else {return "#00441b" }
+		})
+		.attr('cx', function(d, i) {
+			return deaths[i].x * 35
+		})
+		.attr('cy', function(d, i) {
+			return deaths[i].y * 35
+		})
+		.attr('r', 2);
+		}
+
+		function CreateDeaths(dataset) {
+			for (var i=0; i< dataset.length; i++) {
+				deaths.push(dataset[i]);	
+			}
+		}
+		function drawGraph(deathGraph) {
+		var xData = [];
+		var yData = [];
+		var xScale = d3.time.scale();
+		var yScale = d3.scale.linear();
+		var startDate = deathGraph[0].date; 
+		var endDate = deathGraph[41].date;
+		xScale.domain([startDate, endDate]).range([0, 400]);
+		yScale.domain([0, 150]).range([400, 0]);
+		
+		for (var i=0; i<deathGraph.length; i++) {
+			xData.push(deathGraph[i].date);
+			yData.push(deathGraph[i].deaths);
+		}
+
+		var pathGenerator = d3.svg.line()
+			.x(function(d) { return xScale(d.date); })
+			.y(function(d) { return yScale(d.deaths); });
+			
+		var g = d3.select('svg').select('g');
+
+		var xAxis = d3.svg.axis()
+   			.scale(xScale)
+    			.orient('bottom');
+
+   		var yAxis = d3.svg.axis()
+    			.scale(yScale)
+    			.orient('left');
+
+		g.append('g')
+    			.attr('class', 'axis')
+    			.attr('transform', 'translate(800,' + 600 + ')')
+    			.call(xAxis);
+
+	    	g.append('g')
+    			.attr('class', 'axis')
+			.attr('transform', 'translate(800,' + 200 + ')')
+    			.call(yAxis);
+
+	    	g.append('path')
+    			.style('fill', 'none')
+    			.style('stroke', 'red')
+    			.style('stroke-width', '3px')
+			.attr('transform', 'translate(800,' + 200 + ')')
+    			.attr('d', pathGenerator(deathGraph));
+
+		g.selectAll('circle')
+			.on("click", function(d) {
+				return d;
+			})
+
+			.on("mouseover", function(d) {
+				d3.select(this)
+					.attr('fill', "purple")
+			})
+
+			.on('mouseout', function(d) {
+				d3.select(this)
+					.attr('fill', "#F5794A");
+			})
+		}
+	</script>
+</body>
+</html>
